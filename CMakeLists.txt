@@ -14,6 +14,10 @@ if (VTK_MODULE_CMAKE_MODULE_PATH)
   message(STATUS "Setting VTK_MODULE_CMAKE_MODULE_PATH to ${VTK_MODULE_CMAKE_MODULE_PATH}")
 endif ()
 
+if (VTK_KIT_FILEPATH)
+  message(STATUS "Setting VTK_KIT_FILEPATH to ${VTK_KIT_FILEPATH}")
+endif ()
+
 project(vtk${VTK_MODULE_NAME} VERSION 0.1.0)
 
 if (DEFINED VTK_MODULE_ENABLE_VTK_${VTK_MODULE_NAME} AND NOT "${CMAKE_PROJECT_NAME}" STREQUAL "${PROJECT_NAME}")
@@ -71,15 +75,32 @@ endif ()
 # Search for "vtk.module" files in all subdirectories.
 vtk_module_find_modules(vtk_module_files ${VTK_MODULE_SOURCE_DIR})
 
+set(_vtk_module_scan_kit_args)
+if (VTK_KIT_FILEPATH)
+  set(_vtk_module_scan_kit_args
+    KIT_FILES ${VTK_KIT_FILEPATH}
+    PROVIDES_KITS _vtk_kits
+    )
+endif ()
+
 vtk_module_scan(
   MODULE_FILES     "${vtk_module_files}"
+  ${_vtk_module_scan_kit_args}
   REQUEST_MODULES  "VTK::${VTK_MODULE_NAME}"
   PROVIDES_MODULES _modules
   ENABLE_TESTS     "${BUILD_TESTING}")
 
+set(vtk_module_build_kit_args)
+if (VTK_KIT_FILEPATH)
+  set(vtk_module_build_kit_args
+    KITS ${_vtk_kits}
+    )
+endif ()
+
 string(TOLOWER ${PROJECT_NAME} _project_name_lc)
 vtk_module_build(
   MODULES               ${_modules}
+  ${vtk_module_build_kit_args}
   INSTALL_EXPORT        ${PROJECT_NAME}
   ARCHIVE_DESTINATION   "lib"
   HEADERS_DESTINATION   "include/${_project_name_lc}-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
