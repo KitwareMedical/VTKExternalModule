@@ -19,6 +19,7 @@ _Selected options specific to this project. For a complete list of options, insp
 | `VTK_MODULE_NAME` | Name of the module specified after `VTK::`. | :heavy_check_mark: |
 | `VTK_MODULE_CMAKE_MODULE_PATH` | Optional path to prepend to `CMAKE_MODULE_PATH`. | |
 | `VTK_KIT_FILEPATH` | Optional path to the [vtk.kit][vtk.kit] file associated with the module. | |
+| `<PackageName>_FIND_PACKAGE_VARS` | List of variables expected by `vtk_module_find_package(<PackageName>)`. Each variables will be configured into `vtk<vtk_module_name>-config.cmake`. | |
 
 [vtk.module]: https://vtk.org/doc/nightly/html/group__module.html#module-overview
 [vtk.kit]: https://vtk.org/doc/nightly/html/group__module.html#module-overview
