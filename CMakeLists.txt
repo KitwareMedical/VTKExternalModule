@@ -72,6 +72,25 @@ if (NOT CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
 endif ()
 
+# Testing
+set(VTK_BUILD_TESTING "OFF"
+  CACHE STRING "Build module testing directories")
+set_property(CACHE VTK_BUILD_TESTING
+  PROPERTY
+    STRINGS "ON;OFF;WANT")
+
+if (VTK_BUILD_TESTING)
+  include(CTest)
+  set_property(CACHE BUILD_TESTING
+    PROPERTY
+      TYPE INTERNAL)
+  set(BUILD_TESTING ON)
+else ()
+  set(BUILD_TESTING OFF)
+endif ()
+
+set(ExternalData_SOURCE_ROOT ${VTK_MODULE_SOURCE_DIR})
+
 # Search for "vtk.module" files in all subdirectories.
 vtk_module_find_modules(vtk_module_files ${VTK_MODULE_SOURCE_DIR})
 
