@@ -42,8 +42,10 @@ endif ()
 # Wrap Python option
 if (VTK_WRAP_PYTHON)
   option(BUILD_PYTHON_WRAPPERS "Build python wrappers" ON)
+  option(VTK_WHEEL_BUILD "Build wheel version of libraries." OFF)
 else ()
   unset(BUILD_PYTHON_WRAPPERS CACHE)
+  unset(VTK_WHEEL_BUILD CACHE)
 endif ()
 
 # Wrap Java option
@@ -71,6 +73,30 @@ endif ()
 if (NOT CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
 endif ()
+
+
+set(_vtk_module_wrap_python_additional_args)
+set(_vtk_module_library_destination "${CMAKE_INSTALL_LIBDIR}")
+if (VTK_WRAP_PYTHON AND VTK_WHEEL_BUILD)
+  # Following settings adapted from "VTK/CMake/vtkWheelPreparation.cmake"
+  if (APPLE)
+    # macOS loader settings.
+    set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
+    set(CMAKE_INSTALL_NAME_DIR "@rpath")
+    list(APPEND CMAKE_INSTALL_RPATH
+      "@loader_path")
+  elseif (UNIX)
+    # ELF loader settings.
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
+    list(APPEND CMAKE_INSTALL_RPATH
+      "$ORIGIN")
+  endif ()
+  set(VTK_PYTHON_OPTIONAL_LINK ON)
+  # These need to be set so the libraries all end up in lib/vtkmodules/
+  set(_vtk_module_library_destination "${CMAKE_INSTALL_LIBDIR}/vtkmodules")
+  set(_vtk_module_wrap_python_additional_args MODULE_DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+endif()
 
 # Testing
 set(VTK_BUILD_TESTING "OFF"
@@ -143,6 +169,7 @@ vtk_module_build(
   CMAKE_DESTINATION     "${CMAKE_INSTALL_LIBDIR}/cmake/vtk"
   LICENSE_DESTINATION   "${CMAKE_INSTALL_LIBDIR}/vtk"
   HIERARCHY_DESTINATION "${CMAKE_INSTALL_LIBDIR}/vtk/hierarchy/${CMAKE_PROJECT_NAME}"
+  LIBRARY_DESTINATION   "${_vtk_module_library_destination}"
   VERSION               "${PROJECT_VERSION}"
   SOVERSION             "1"
   TEST_DATA_TARGET      ${PROJECT_NAME}Data
@@ -160,7 +187,8 @@ if (BUILD_PYTHON_WRAPPERS)
     SOABI               "${Python${VTK_PYTHON_VERSION}_SOABI}"
     CMAKE_DESTINATION   "${CMAKE_INSTALL_LIBDIR}/cmake/vtk"
     LIBRARY_DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    BUILD_STATIC        OFF)
+    BUILD_STATIC        OFF
+    ${_vtk_module_wrap_python_additional_args})
 endif ()
 
 if (BUILD_JAVA_WRAPPERS)
