@@ -76,6 +76,7 @@ endif ()
 
 
 set(_vtk_module_wrap_python_additional_args)
+set(_vtk_module_runtime_destination "${CMAKE_INSTALL_BINDIR}")
 set(_vtk_module_library_destination "${CMAKE_INSTALL_LIBDIR}")
 if (VTK_WRAP_PYTHON AND VTK_WHEEL_BUILD)
   # Following settings adapted from "VTK/CMake/vtkWheelPreparation.cmake"
@@ -96,6 +97,10 @@ if (VTK_WRAP_PYTHON AND VTK_WHEEL_BUILD)
   # These need to be set so the libraries all end up in lib/vtkmodules/
   set(_vtk_module_library_destination "${CMAKE_INSTALL_LIBDIR}/vtkmodules")
   set(_vtk_module_wrap_python_additional_args MODULE_DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+  if (WIN32)
+    # Ensure the dlls end up in lib/vtkmodules as well
+    set(_vtk_module_runtime_destination "${CMAKE_INSTALL_LIBDIR}/vtkmodules")
+  endif ()
 endif()
 
 # Testing
@@ -169,6 +174,7 @@ vtk_module_build(
   CMAKE_DESTINATION     "${CMAKE_INSTALL_LIBDIR}/cmake/vtk"
   LICENSE_DESTINATION   "${CMAKE_INSTALL_LIBDIR}/vtk"
   HIERARCHY_DESTINATION "${CMAKE_INSTALL_LIBDIR}/vtk/hierarchy/${CMAKE_PROJECT_NAME}"
+  RUNTIME_DESTINATION   "${_vtk_module_runtime_destination}"
   LIBRARY_DESTINATION   "${_vtk_module_library_destination}"
   VERSION               "${PROJECT_VERSION}"
   SOVERSION             "1"
