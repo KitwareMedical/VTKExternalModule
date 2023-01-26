@@ -10,15 +10,59 @@ if (NOT VTK_MODULE_NAME)
 endif ()
 message(STATUS "Setting VTK_MODULE_NAME to ${VTK_MODULE_NAME}")
 
+if(NOT DEFINED VTK_MODULE_SUPERBUILD)
+  set(VTK_MODULE_SUPERBUILD OFF)
+endif()
+message(STATUS "Setting VTK_MODULE_SUPERBUILD to ${VTK_MODULE_SUPERBUILD}")
+
+if(VTK_MODULE_SUPERBUILD)
+  if(NOT DEFINED VTK_MODULE_EXTERNAL_PROJECT_DEPENDENCIES)
+    message(FATAL_ERROR "Setting VTK_MODULE_EXTERNAL_PROJECT_DEPENDENCIES is required to configure the VTK module with VTK_MODULE_SUPERBUILD set to ON.")
+  endif()
+  message(STATUS "Setting VTK_MODULE_EXTERNAL_PROJECT_DEPENDENCIES to ${VTK_MODULE_EXTERNAL_PROJECT_DEPENDENCIES}")
+
+  if(DEFINED VTK_MODULE_EXTERNAL_PROJECT_CMAKE_CACHE_ARGS)
+    message(STATUS "Setting VTK_MODULE_EXTERNAL_PROJECT_CMAKE_CACHE_ARGS to ${VTK_MODULE_EXTERNAL_PROJECT_CMAKE_CACHE_ARGS}")
+  endif()
+endif()
+
+# Update CMake module path
+list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
+
+# Superbuild
+set(SUPERBUILD_TOPLEVEL_PROJECT vtk${VTK_MODULE_NAME})
+set(EXTERNAL_PROJECT_DIR ${VTK_MODULE_SOURCE_DIR}/SuperBuild)
+set(EXTERNAL_PROJECT_FILE_PREFIX "External_")
+include(ExternalProject)
+include(ExternalProjectDependency)
+
+if(NOT DEFINED ${SUPERBUILD_TOPLEVEL_PROJECT}_SUPERBUILD)
+  set(${SUPERBUILD_TOPLEVEL_PROJECT}_SUPERBUILD ${VTK_MODULE_SUPERBUILD})
+endif()
+
+if(VTK_MODULE_SUPERBUILD)
+  message(STATUS "Setting SUPERBUILD_TOPLEVEL_PROJECT to ${SUPERBUILD_TOPLEVEL_PROJECT}")
+  message(STATUS "Setting EXTERNAL_PROJECT_DIR to ${EXTERNAL_PROJECT_DIR}")
+  message(STATUS "Setting EXTERNAL_PROJECT_FILE_PREFIX to ${EXTERNAL_PROJECT_FILE_PREFIX}")
+endif()
+
+mark_as_superbuild(
+  VARS
+    VTK_MODULE_NAME:STRING
+    VTK_MODULE_SOURCE_DIR:PATH
+  )
+
 if (VTK_MODULE_CMAKE_MODULE_PATH)
   message(STATUS "Setting VTK_MODULE_CMAKE_MODULE_PATH to ${VTK_MODULE_CMAKE_MODULE_PATH}")
 endif ()
+mark_as_superbuild(VTK_MODULE_CMAKE_MODULE_PATH:PATH)
 
 if (VTK_KIT_FILEPATH)
   message(STATUS "Setting VTK_KIT_FILEPATH to ${VTK_KIT_FILEPATH}")
 endif ()
+mark_as_superbuild(VTK_KIT_FILEPATH:FILEPATH)
 
-project(vtk${VTK_MODULE_NAME} VERSION 0.1.0)
+project(${SUPERBUILD_TOPLEVEL_PROJECT} VERSION 0.1.0)
 
 if (DEFINED VTK_MODULE_ENABLE_VTK_${VTK_MODULE_NAME} AND NOT "${CMAKE_PROJECT_NAME}" STREQUAL "${PROJECT_NAME}")
   # When building as a remote module for VTK 9 (or VTK 8.90+)
@@ -26,14 +70,24 @@ if (DEFINED VTK_MODULE_ENABLE_VTK_${VTK_MODULE_NAME} AND NOT "${CMAKE_PROJECT_NA
   return()
 endif ()
 
+if(DEFINED Python3_EXECUTABLE)
+  mark_as_superbuild(Python3_EXECUTABLE:FILEPATH)
+endif()
+
 find_package(VTK REQUIRED)
+if(DEFINED VTK_DIR)
+  mark_as_superbuild(VTK_DIR:PATH)
+endif()
 
 if (VTK_VERSION VERSION_LESS 8.90)
   message(FATAL_ERROR "VTK 8.90 or later is required.")
 endif ()
 
 option(BUILD_SHARED_LIBS "Build shared libraries." ON)
+mark_as_superbuild(BUILD_SHARED_LIBS)
+
 option(BUILD_TESTING "Build testing" OFF)
+mark_as_superbuild(BUILD_TESTING)
 
 if (VTK_MODULE_CMAKE_MODULE_PATH)
   list(INSERT CMAKE_MODULE_PATH 0 ${VTK_MODULE_CMAKE_MODULE_PATH})
@@ -47,6 +101,11 @@ else ()
   unset(BUILD_PYTHON_WRAPPERS CACHE)
   unset(VTK_WHEEL_BUILD CACHE)
 endif ()
+mark_as_superbuild(
+  VARS
+    BUILD_PYTHON_WRAPPERS:BOOL
+    VTK_WHEEL_BUILD:BOOL
+  )
 
 # Wrap Java option
 if (VTK_WRAP_JAVA)
@@ -54,9 +113,13 @@ if (VTK_WRAP_JAVA)
 else ()
   unset(BUILD_JAVA_WRAPPERS CACHE)
 endif ()
+mark_as_superbuild(BUILD_JAVA_WRAPPERS:BOOL)
 
 # Defines CMAKE_INSTALL_LIBDIR etcetera
 include(GNUInstallDirs)
+if(DEFINED CMAKE_INSTALL_LIBDIR)
+  mark_as_superbuild(CMAKE_INSTALL_LIBDIR:STRING)
+endif()
 
 # Set up our directory structure for output libraries and binaries
 # (Note: these are the build locations, not the install locations)
@@ -74,6 +137,12 @@ if (NOT CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
 endif ()
 
+mark_as_superbuild(
+  VARS
+    CMAKE_RUNTIME_OUTPUT_DIRECTORY:PATH
+    CMAKE_LIBRARY_OUTPUT_DIRECTORY:PATH
+    CMAKE_ARCHIVE_OUTPUT_DIRECTORY:PATH
+  )
 
 set(_vtk_module_wrap_python_additional_args)
 set(_vtk_module_runtime_destination "${CMAKE_INSTALL_BINDIR}")
@@ -109,6 +178,7 @@ set(VTK_BUILD_TESTING "OFF"
 set_property(CACHE VTK_BUILD_TESTING
   PROPERTY
     STRINGS "ON;OFF;WANT")
+mark_as_superbuild(VTK_BUILD_TESTING:STRING)
 
 if (VTK_BUILD_TESTING)
   include(CTest)
@@ -121,6 +191,63 @@ else ()
 endif ()
 
 set(ExternalData_SOURCE_ROOT ${VTK_MODULE_SOURCE_DIR})
+
+if(VTK_MODULE_SUPERBUILD)
+  set(proj ${SUPERBUILD_TOPLEVEL_PROJECT})
+  
+  if(APPLE)
+    mark_as_superbuild(
+      VARS CMAKE_OSX_ARCHITECTURES:STRING CMAKE_OSX_SYSROOT:PATH CMAKE_OSX_DEPLOYMENT_TARGET:STRING
+      ALL_PROJECTS
+      )
+  endif()
+
+  foreach(varname IN ITEMS
+    CMAKE_CXX_STANDARD
+    CMAKE_CXX_STANDARD_REQUIRED
+    CMAKE_CXX_EXTENSIONS
+    SKBUILD
+    )
+    if(DEFINED ${varname})
+      mark_as_superbuild(${varname})
+    endif()
+  endforeach()
+
+  if(DEFINED VTK_MODULE_EXTERNAL_PROJECT_CMAKE_CACHE_ARGS)
+    foreach(varname IN LISTS VTK_MODULE_EXTERNAL_PROJECT_CMAKE_CACHE_ARGS)
+      if(DEFINED ${varname})
+        mark_as_superbuild(${varname})
+      endif()
+    endforeach()
+  endif()
+
+  ExternalProject_Include_Dependencies(${proj} PROJECT_VAR proj DEPENDS_VAR VTK_MODULE_EXTERNAL_PROJECT_DEPENDENCIES)
+
+  ExternalProject_Add(${proj}
+    ${${proj}_EP_ARGS}
+    DEPENDS ${VTK_MODULE_EXTERNAL_PROJECT_DEPENDENCIES}
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}
+    BINARY_DIR ${CMAKE_BINARY_DIR}/inner-build
+    DOWNLOAD_COMMAND ""
+    UPDATE_COMMAND ""
+    CMAKE_CACHE_ARGS
+      -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
+      -DCMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS}
+      -DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}
+      -DCMAKE_C_FLAGS:STRING=${CMAKE_C_FLAGS}
+      -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_INSTALL_PREFIX}
+      -DVTK_MODULE_SUPERBUILD:BOOL=OFF
+      ${EXTERNAL_PROJECT_OPTIONAL_CMAKE_CACHE_ARGS}
+    INSTALL_COMMAND ""
+    )
+  ExternalProject_AlwaysConfigure(${proj})
+  
+  # Install inner project
+  install(CODE "
+include(\"${CMAKE_BINARY_DIR}/inner-build/cmake_install.cmake\")
+")
+  return()
+endif()
 
 # Search for "vtk.module" files in all subdirectories.
 vtk_module_find_modules(vtk_module_files ${VTK_MODULE_SOURCE_DIR})

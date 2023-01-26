@@ -21,6 +21,11 @@ _Selected options specific to this project. For a complete list of options, insp
 | `VTK_KIT_FILEPATH` | Optional path to the [vtk.kit][vtk.kit] file associated with the module. | |
 | `<PackageName>_FIND_PACKAGE_VARS` | List of variables expected by `vtk_module_find_package(<PackageName>)`. Each variables will be configured into `vtk<vtk_module_name>-config.cmake`. | |
 | `VTK_BUILD_TESTING` | Build module testing directories. Default is `OFF` | |
+| `VTK_MODULE_SUPERBUILD` | Build dependency listed in `VTK_MODULE_EXTERNAL_PROJECT_DEPENDENCIES` first. Default is `OFF`. | |
+| `VTK_MODULE_EXTERNAL_PROJECT_DEPENDENCIES` | List of direct external project dependencies. | :heavy_check_mark: (*) |
+| `VTK_MODULE_EXTERNAL_PROJECT_CMAKE_CACHE_ARGS` | Additional list of options to associate with main project. | |
+
+(*): Only if `VTK_MODULE_SUPERBUILD` is `ON`.
 
 [vtk.module]: https://vtk.org/doc/nightly/html/group__module.html#module-overview
 [vtk.kit]: https://vtk.org/doc/nightly/html/group__module.html#module-overview
