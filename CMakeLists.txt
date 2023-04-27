@@ -74,6 +74,20 @@ if(DEFINED Python3_EXECUTABLE)
   mark_as_superbuild(Python3_EXECUTABLE:FILEPATH)
 endif()
 
+option(BUILD_PYTHON_WRAPPERS "Build python wrappers" ON)
+option(VTK_WHEEL_BUILD "Build wheel version of libraries." OFF)
+option(BUILD_JAVA_WRAPPERS "Build java wrappers" OFF)
+
+# Adapted from "VTK/CMake/vtkCrossCompiling.cmake"
+if(CMAKE_CROSSCOMPILING
+    AND NOT VTKCompileTools_FOUND
+    AND NOT DEFINED CMAKE_CROSSCOMPILING_EMULATOR
+    AND (BUILD_JAVA_WRAPPERS OR BUILD_PYTHON_WRAPPERS))
+  # if CMAKE_CROSSCOMPILING is true and crosscompiling emulator is not available, we need
+  # to import build-tools targets.
+  find_package(VTKCompileTools REQUIRED)
+endif()
+
 find_package(VTK REQUIRED)
 if(DEFINED VTK_DIR)
   mark_as_superbuild(VTK_DIR:PATH)
@@ -91,10 +105,7 @@ if (VTK_MODULE_CMAKE_MODULE_PATH)
 endif ()
 
 # Wrap Python option
-if (VTK_WRAP_PYTHON)
-  option(BUILD_PYTHON_WRAPPERS "Build python wrappers" ON)
-  option(VTK_WHEEL_BUILD "Build wheel version of libraries." OFF)
-else ()
+if (NOT VTK_WRAP_PYTHON)
   unset(BUILD_PYTHON_WRAPPERS CACHE)
   unset(VTK_WHEEL_BUILD CACHE)
 endif ()
@@ -105,9 +116,7 @@ mark_as_superbuild(
   )
 
 # Wrap Java option
-if (VTK_WRAP_JAVA)
-  option(BUILD_JAVA_WRAPPERS "Build java wrappers" OFF)
-else ()
+if (NOT VTK_WRAP_JAVA)
   unset(BUILD_JAVA_WRAPPERS CACHE)
 endif ()
 mark_as_superbuild(BUILD_JAVA_WRAPPERS:BOOL)
@@ -216,7 +225,10 @@ if(VTK_MODULE_SUPERBUILD)
     CMAKE_CXX_STANDARD
     CMAKE_CXX_STANDARD_REQUIRED
     CMAKE_CXX_EXTENSIONS
+    CMAKE_CROSSCOMPILING
+    CMAKE_CROSSCOMPILING_EMULATOR
     SKBUILD
+    VTKCompileTools_DIR
     )
     if(DEFINED ${varname})
       mark_as_superbuild(${varname})
