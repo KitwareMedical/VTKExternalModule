@@ -86,9 +86,6 @@ endif ()
 option(BUILD_SHARED_LIBS "Build shared libraries." ON)
 mark_as_superbuild(BUILD_SHARED_LIBS)
 
-option(BUILD_TESTING "Build testing" OFF)
-mark_as_superbuild(BUILD_TESTING)
-
 if (VTK_MODULE_CMAKE_MODULE_PATH)
   list(INSERT CMAKE_MODULE_PATH 0 ${VTK_MODULE_CMAKE_MODULE_PATH})
 endif ()
