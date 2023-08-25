@@ -121,17 +121,17 @@ endif()
 # Set up our directory structure for output libraries and binaries
 # (Note: these are the build locations, not the install locations)
 if (NOT CMAKE_RUNTIME_OUTPUT_DIRECTORY)
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
 endif ()
 if (NOT CMAKE_LIBRARY_OUTPUT_DIRECTORY)
   if (UNIX)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
   else ()
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
   endif ()
 endif ()
 if (NOT CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
-  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
 endif ()
 
 mark_as_superbuild(
@@ -140,6 +140,19 @@ mark_as_superbuild(
     CMAKE_LIBRARY_OUTPUT_DIRECTORY:PATH
     CMAKE_ARCHIVE_OUTPUT_DIRECTORY:PATH
   )
+
+mark_as_superbuild(
+  VARS
+    CMAKE_INSTALL_BINDIR:PATH
+    CMAKE_INSTALL_LIBDIR:PATH
+  )
+
+if (DEFINED VTK_INSTALL_RUNTIME_DIR)
+  message(AUTHOR_WARNING "Setting VTK_INSTALL_RUNTIME_DIR has no effect. Set CMAKE_INSTALL_BINDIR instead.")
+endif ()
+if (DEFINED VTK_INSTALL_LIBRARY_DIR)
+  message(AUTHOR_WARNING "Setting VTK_INSTALL_LIBRARY_DIR has no effect. Set CMAKE_INSTALL_LIBDIR instead.")
+endif ()
 
 set(_vtk_module_wrap_python_additional_args)
 set(_vtk_module_runtime_destination "${CMAKE_INSTALL_BINDIR}")
