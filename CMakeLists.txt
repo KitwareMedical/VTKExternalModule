@@ -232,15 +232,23 @@ if(VTK_MODULE_SUPERBUILD)
     CMAKE_CXX_STANDARD
     CMAKE_CXX_STANDARD_REQUIRED
     CMAKE_CXX_EXTENSIONS
-    CMAKE_CROSSCOMPILING
-    CMAKE_CROSSCOMPILING_EMULATOR
-    CMAKE_SYSTEM_NAME
     SKBUILD
     VTKCompileTools_DIR
     )
     if(DEFINED ${varname})
       message("0: mark_as_superbuild(${varname})")
       mark_as_superbuild(${varname})
+    endif()
+  endforeach()
+
+  foreach(varname IN ITEMS
+    CMAKE_CROSSCOMPILING
+    CMAKE_CROSSCOMPILING_EMULATOR
+    CMAKE_SYSTEM_NAME
+    )
+    if(DEFINED ${varname})
+      message("0: mark_as_superbuild(${varname} ALL_PROJECTS)")
+      mark_as_superbuild(${varname} ALL_PROJECTS)
     endif()
   endforeach()
 
