@@ -248,7 +248,7 @@ if(VTK_MODULE_SUPERBUILD)
     )
     if(DEFINED ${varname})
       message("0: mark_as_superbuild(${varname} ALL_PROJECTS)")
-      mark_as_superbuild(${varname} ALL_PROJECTS)
+      mark_as_superbuild(VARS ${varname} ALL_PROJECTS)
     endif()
   endforeach()
 
