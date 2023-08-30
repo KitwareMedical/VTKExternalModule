@@ -79,19 +79,12 @@ option(VTK_WHEEL_BUILD "Build wheel version of libraries." OFF)
 option(BUILD_JAVA_WRAPPERS "Build java wrappers" OFF)
 
 # Adapted from "VTK/CMake/vtkCrossCompiling.cmake"
-message("CMAKE_CROSSCOMPILING [${CMAKE_CROSSCOMPILING}]")
-message("VTKCompileTools_FOUND [${VTKCompileTools_FOUND}]")
-message("CMAKE_CROSSCOMPILING_EMULATOR [${CMAKE_CROSSCOMPILING_EMULATOR}]")
-message("BUILD_JAVA_WRAPPERS [${BUILD_JAVA_WRAPPERS}]")
-message("BUILD_PYTHON_WRAPPERS [${BUILD_PYTHON_WRAPPERS}]")
-
 if(CMAKE_CROSSCOMPILING
     AND NOT VTKCompileTools_FOUND
     AND NOT DEFINED CMAKE_CROSSCOMPILING_EMULATOR
     AND (BUILD_JAVA_WRAPPERS OR BUILD_PYTHON_WRAPPERS))
   # if CMAKE_CROSSCOMPILING is true and crosscompiling emulator is not available, we need
   # to import build-tools targets.
-  message("Finding VTKCompileTools")
   find_package(VTKCompileTools REQUIRED)
 endif()
 
@@ -236,7 +229,6 @@ if(VTK_MODULE_SUPERBUILD)
     VTKCompileTools_DIR
     )
     if(DEFINED ${varname})
-      message("0: mark_as_superbuild(${varname})")
       mark_as_superbuild(${varname})
     endif()
   endforeach()
@@ -247,7 +239,6 @@ if(VTK_MODULE_SUPERBUILD)
     CMAKE_SYSTEM_NAME
     )
     if(DEFINED ${varname})
-      message("0: mark_as_superbuild(${varname} ALL_PROJECTS)")
       mark_as_superbuild(VARS ${varname} ALL_PROJECTS)
     endif()
   endforeach()
@@ -256,15 +247,12 @@ if(VTK_MODULE_SUPERBUILD)
     foreach(varname IN LISTS VTK_MODULE_EXTERNAL_PROJECT_CMAKE_CACHE_ARGS)
       if(DEFINED ${varname})
         mark_as_superbuild(${varname})
-        message("1: mark_as_superbuild(${varname})")
       endif()
     endforeach()
   endif()
 
   ExternalProject_Include_Dependencies(${proj} PROJECT_VAR proj DEPENDS_VAR VTK_MODULE_EXTERNAL_PROJECT_DEPENDENCIES)
 
-  message(">> CMAKE_CROSSCOMPILING:${CMAKE_CROSSCOMPILING}")
-  message("${proj}_EP_ARGS:${${proj}_EP_ARGS}")
   ExternalProject_Add(${proj}
     ${${proj}_EP_ARGS}
     DEPENDS ${VTK_MODULE_EXTERNAL_PROJECT_DEPENDENCIES}
