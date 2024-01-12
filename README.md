@@ -24,6 +24,7 @@ _Selected options specific to this project. For a complete list of options, insp
 | `VTK_MODULE_SUPERBUILD` | Build dependency listed in `VTK_MODULE_EXTERNAL_PROJECT_DEPENDENCIES` first. Default is `OFF`. | |
 | `VTK_MODULE_EXTERNAL_PROJECT_DEPENDENCIES` | List of direct external project dependencies. | :heavy_check_mark: (*) |
 | `VTK_MODULE_EXTERNAL_PROJECT_CMAKE_CACHE_ARGS` | Additional list of options to associate with main project. | |
+| `VTK_MODULE_PYTHON_MODULE_DESTINATION` | Optional location for installing VTK modules. Ignored when `VTK_WHEEL_BUILD` is `ON` | |
 
 (*): Only if `VTK_MODULE_SUPERBUILD` is `ON`.
 

@@ -166,6 +166,7 @@ endif ()
 set(_vtk_module_wrap_python_additional_args)
 set(_vtk_module_runtime_destination "${CMAKE_INSTALL_BINDIR}")
 set(_vtk_module_library_destination "${CMAKE_INSTALL_LIBDIR}")
+set(_vtk_module_module_destination)
 if (VTK_WRAP_PYTHON AND VTK_WHEEL_BUILD)
   # Following settings adapted from "VTK/CMake/vtkWheelPreparation.cmake"
   if (APPLE)
@@ -184,11 +185,31 @@ if (VTK_WRAP_PYTHON AND VTK_WHEEL_BUILD)
   set(VTK_PYTHON_OPTIONAL_LINK ON)
   # These need to be set so the libraries all end up in lib/vtkmodules/
   set(_vtk_module_library_destination "${CMAKE_INSTALL_LIBDIR}/vtkmodules")
-  set(_vtk_module_wrap_python_additional_args MODULE_DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+  set(_vtk_module_module_destination "${CMAKE_INSTALL_LIBDIR}")
   if (WIN32)
     # Ensure the dlls end up in lib/vtkmodules as well
     set(_vtk_module_runtime_destination "${CMAKE_INSTALL_LIBDIR}/vtkmodules")
   endif ()
+
+  # Sanity check
+  if(DEFINED VTK_MODULE_PYTHON_MODULE_DESTINATION)
+    message(AUTHOR_WARNING "Setting VTK_MODULE_PYTHON_MODULE_DESTINATION when VTK_WHEEL_BUILD is ON has no effect.")
+  endif()
+endif()
+
+# If NOT building as a wheel (e.g as a Slicer external project), we accept
+# custom value for python module destination
+if (VTK_WRAP_PYTHON AND NOT VTK_WHEEL_BUILD)
+  if(DEFINED VTK_MODULE_PYTHON_MODULE_DESTINATION)
+    message(STATUS "Setting VTK_MODULE_PYTHON_MODULE_DESTINATION to ${VTK_MODULE_PYTHON_MODULE_DESTINATION}")
+    set(_vtk_module_module_destination ${VTK_MODULE_PYTHON_MODULE_DESTINATION})
+  endif()
+  mark_as_superbuild(VTK_MODULE_PYTHON_MODULE_DESTINATION:STRING)
+endif()
+
+if(_vtk_module_module_destination)
+  list(APPEND _vtk_module_wrap_python_additional_args
+    MODULE_DESTINATION "${_vtk_module_module_destination}")
 endif()
 
 # Testing
