@@ -1,16 +1,36 @@
-include(CMakeFindDependencyMacro)
+cmake_policy(PUSH)
+cmake_policy(VERSION 3.12)
+
+# Initialize ${CMAKE_FIND_PACKAGE_NAME}_AVAILABLE_COMPONENTS and
+# ${CMAKE_FIND_PACKAGE_NAME}_FIND_COMPONENTS based on known modules
+set(${CMAKE_FIND_PACKAGE_NAME}_AVAILABLE_COMPONENTS "@_available_components@")
+set(real_components)
+foreach(component IN LISTS "${CMAKE_FIND_PACKAGE_NAME}_FIND_COMPONENTS")
+  # Handle component requests that are not VTK.
+  if(NOT component IN_LIST "${CMAKE_FIND_PACKAGE_NAME}_AVAILABLE_COMPONENTS")
+    set("${CMAKE_FIND_PACKAGE_NAME}_${component}_FOUND" 0)
+    list(APPEND "${CMAKE_FIND_PACKAGE_NAME}_${component}_NOT_FOUND_MESSAGE"
+      "The ${component} component is not recognized.")
+  endif()
+  list(APPEND real_components "${component}")
+endforeach ()
+unset(component)
+set(${CMAKE_FIND_PACKAGE_NAME}_FIND_COMPONENTS ${real_components})
+unset(real_components)
 
 set("${CMAKE_FIND_PACKAGE_NAME}_CMAKE_MODULE_PATH" "@VTK_MODULE_CMAKE_MODULE_PATH@")
-
 list(INSERT CMAKE_MODULE_PATH 0
   "${CMAKE_CURRENT_LIST_DIR}"
   "${${CMAKE_FIND_PACKAGE_NAME}_CMAKE_MODULE_PATH}"
-  )
+)
 
+# include targets
 include("${CMAKE_CURRENT_LIST_DIR}/${CMAKE_FIND_PACKAGE_NAME}-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/${CMAKE_FIND_PACKAGE_NAME}-vtk-module-properties.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/${CMAKE_FIND_PACKAGE_NAME}-vtk-find-package-helpers.cmake" OPTIONAL)
 
+# Find needed VTKExternalModules
+include(CMakeFindDependencyMacro)
 set(_vtk_external_package_depends "@_vtk_external_package_depends@")
 foreach(_vtk_external_package_depend IN LISTS _vtk_external_package_depends)
   find_dependency(${_vtk_external_package_depend})
@@ -26,3 +46,117 @@ if (${CMAKE_FIND_PACKAGE_NAME}_WRAP_PYTHON AND ${CMAKE_FIND_PACKAGE_NAME}_BUILD_
   include("${CMAKE_CURRENT_LIST_DIR}/vtkmodules-vtk-python-module-properties.cmake")
   set("${CMAKE_FIND_PACKAGE_NAME}_PYTHONPATH" "@VTK_PYTHON_SITE_PACKAGES_SUFFIX@")
 endif ()
+
+# Verify every module asked and their dependencies exists at this point!
+set(search_components ${${CMAKE_FIND_PACKAGE_NAME}_FIND_COMPONENTS})
+if(NOT search_components)
+  set(search_components ${${CMAKE_FIND_PACKAGE_NAME}_AVAILABLE_COMPONENTS})
+endif()
+set(components_to_check)
+foreach(component IN LISTS search_components)
+  if(DEFINED "${CMAKE_FIND_PACKAGE_NAME}_${component}_FOUND")
+    # It was already not-found (likely due to `find-package` failures).
+  elseif(TARGET "${CMAKE_FIND_PACKAGE_NAME}::${component}")
+    list(APPEND components_to_check "${component}")
+  else()
+    set("${CMAKE_FIND_PACKAGE_NAME}_${component}_FOUND" 0)
+    list(APPEND "${CMAKE_FIND_PACKAGE_NAME}_${component}_NOT_FOUND_MESSAGE"
+      "The ${component} component is not available.")
+  endif()
+endforeach()
+unset(component)
+unset(search_components)
+
+while(components_to_check)
+  list(GET components_to_check 0 component)
+  list(REMOVE_AT components_to_check 0)
+  if(DEFINED "${CMAKE_FIND_PACKAGE_NAME}_${component}_FOUND")
+    # We've already made a determiniation.
+    continue()
+  endif()
+
+  get_property(public_dependencies
+    TARGET    "VTK::${component}"
+    PROPERTY  "INTERFACE_vtk_module_depends")
+  get_property(private_dependencies
+    TARGET    "VTK::${component}"
+    PROPERTY  "INTERFACE_vtk_module_private_depends")
+  get_property(optional_dependencies
+    TARGET    "VTK::${component}"
+    PROPERTY  "INTERFACE_vtk_module_optional_depends")
+  set(dependencies ${public_dependencies} ${private_dependencies})
+  foreach(optional_dependency IN LISTS optional_dependencies)
+    if(TARGET "${optional_dependency}")
+      list(APPEND dependencies "${optional_dependency}")
+    endif()
+  endforeach()
+  unset(public_dependencies)
+  unset(private_dependencies)
+  unset(optional_dependency)
+  unset(optional_dependencies)
+
+  string(REPLACE "VTK::" "" dependencies "${dependencies}")
+  set(all_dependencies_checked TRUE)
+  foreach(dependency IN LISTS dependencies)
+    if(DEFINED "${CMAKE_FIND_PACKAGE_NAME}_${dependency}_FOUND")
+      if(NOT ${CMAKE_FIND_PACKAGE_NAME}_${dependency}_FOUND)
+        set("${CMAKE_FIND_PACKAGE_NAME}_${component}_FOUND" 0)
+        list(APPEND "${CMAKE_FIND_PACKAGE_NAME}_${component}_NOT_FOUND_MESSAGE"
+          "Failed to find the ${dependency} component.")
+      endif()
+    else()
+      # Check its dependencies.
+      list(APPEND components_to_check "${dependency}")
+      set(all_found FALSE)
+    endif()
+  endforeach()
+  if(NOT DEFINED "${CMAKE_FIND_PACKAGE_NAME}_${component}_FOUND")
+    if(all_dependencies_checked)
+      set("${CMAKE_FIND_PACKAGE_NAME}_${component}_FOUND" 1)
+    else()
+      list(APPEND components_to_check "${component}")
+    endif()
+  endif()
+  unset(all_dependencies_checked)
+  unset(dependency)
+  unset(dependencies)
+endwhile ()
+unset(component)
+unset(components_to_check)
+
+set(missing_components)
+foreach(component IN LISTS "${CMAKE_FIND_PACKAGE_NAME}_FIND_COMPONENTS")
+  if(NOT ${CMAKE_FIND_PACKAGE_NAME}_${component}_FOUND AND ${CMAKE_FIND_PACKAGE_NAME}_FIND_REQUIRED_${component})
+    list(APPEND missing_components "${component}")
+  endif()
+endforeach()
+
+if (missing_components)
+  list(REMOVE_DUPLICATES missing_components)
+  list(SORT missing_components)
+  string(REPLACE ";" ", " missing_components "${missing_components}")
+  set("${CMAKE_FIND_PACKAGE_NAME}_FOUND" 0)
+  set("${CMAKE_FIND_PACKAGE_NAME}_NOT_FOUND_MESSAGE"
+    "Could not find the ${CMAKE_FIND_PACKAGE_NAME} package with the following required components: ${missing_components}.")
+endif ()
+unset(missing_components)
+
+set("${CMAKE_FIND_PACKAGE_NAME}_LIBRARIES")
+if(NOT DEFINED "${CMAKE_FIND_PACKAGE_NAME}_FOUND")
+  # If nothing went wrong, we've successfully found the package.
+  set("${CMAKE_FIND_PACKAGE_NAME}_FOUND" 1)
+  set(found_components ${${CMAKE_FIND_PACKAGE_NAME}_FIND_COMPONENTS})
+  if(NOT found_components)
+    set(found_components ${${CMAKE_FIND_PACKAGE_NAME}_AVAILABLE_COMPONENTS})
+  endif()
+  # Build the `_LIBRARIES` variable.
+  foreach(component IN LISTS found_components)
+    if(TARGET VTK::${component})
+      list(APPEND ${CMAKE_FIND_PACKAGE_NAME}_LIBRARIES VTK::${component})
+    endif()
+  endforeach()
+  unset(component)
+  unset(found_components)
+endif ()
+
+cmake_policy(POP)

@@ -1,8 +1,12 @@
-cmake_minimum_required(VERSION 3.8...3.12 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 
 if (NOT VTK_MODULE_SOURCE_DIR)
   message(FATAL_ERROR "Setting VTK_MODULE_SOURCE_DIR is required to lookup the VTK module sources.")
 endif ()
+cmake_path(IS_RELATIVE VTK_MODULE_SOURCE_DIR _source_dir_is_rel)
+if(_source_dir_is_rel)
+  cmake_path(ABSOLUTE_PATH VTK_MODULE_SOURCE_DIR BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif()
 message(STATUS "Setting VTK_MODULE_SOURCE_DIR to ${VTK_MODULE_SOURCE_DIR}")
 
 if (NOT VTK_MODULE_NAME)
@@ -49,6 +53,7 @@ endif()
 mark_as_superbuild(
   VARS
     VTK_MODULE_NAME:STRING
+    VTK_ADDITIONAL_MODULES_NAME:STRING
     VTK_MODULE_SOURCE_DIR:PATH
   )
 
@@ -287,6 +292,7 @@ if(VTK_MODULE_SUPERBUILD)
       -DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}
       -DCMAKE_C_FLAGS:STRING=${CMAKE_C_FLAGS}
       -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_INSTALL_PREFIX}
+      -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DVTK_MODULE_SUPERBUILD:BOOL=OFF
       ${EXTERNAL_PROJECT_OPTIONAL_CMAKE_CACHE_ARGS}
     INSTALL_COMMAND ""
@@ -311,10 +317,15 @@ if (VTK_KIT_FILEPATH)
     )
 endif ()
 
+set(all_modules "VTK::${VTK_MODULE_NAME}")
+foreach(module IN LISTS VTK_ADDITIONAL_MODULES_NAME)
+  list(APPEND all_modules "VTK::${module}")
+endforeach()
+
 vtk_module_scan(
-  MODULE_FILES     "${vtk_module_files}"
+  MODULE_FILES     ${vtk_module_files}
   ${_vtk_module_scan_kit_args}
-  REQUEST_MODULES  "VTK::${VTK_MODULE_NAME}"
+  REQUEST_MODULES  ${all_modules}
   PROVIDES_MODULES _modules
   ENABLE_TESTS     "${BUILD_TESTING}")
 
@@ -427,11 +438,13 @@ foreach (_vtk_build_module IN LISTS _modules)
     # Considering `_vtk_build_depend` is formatted as `VTK::<ModuleName>`,
     # replace `^VTK::` with `vtk`.
     string(REGEX REPLACE "^VTK\:\:" "vtk" _vtk_build_depend_package ${_vtk_build_depend})
-    if (DEFINED ${_vtk_build_depend_package}_DIR OR ${_vtk_build_depend_package}_ROOT)
+    if (${_vtk_build_depend_package}_DIR OR ${_vtk_build_depend_package}_ROOT)
       list(APPEND _vtk_external_package_depends ${_vtk_build_depend_package})
     endif ()
   endforeach ()
 endforeach ()
+# When building multiple modules, we may have redundant names (e.g. if A and B both depends on C)
+list(REMOVE_DUPLICATES _vtk_external_package_depends)
 
 # Collect packages searched using vtk_module_find_package()
 get_property(_vtk_module_find_packages GLOBAL
@@ -457,6 +470,12 @@ set(_cmake_destination
     "${CMAKE_INSTALL_LIBDIR}/cmake/vtk")
 set(_cmake_build_dir
     "${CMAKE_CURRENT_BINARY_DIR}/${_cmake_destination}")
+
+set(_available_components) # will be used by vtkmodule-config.cmake.in
+foreach(_module IN LISTS _modules) # strip VTK:: from module name to get component name
+  string(REPLACE "VTK\:\:" "" _component ${_module})
+  list(APPEND _available_components ${_component})
+endforeach()
 
 string(TOLOWER ${PROJECT_NAME} _project_name_lc)
 configure_file(
